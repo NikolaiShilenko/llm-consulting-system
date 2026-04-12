@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     openrouter_site_url: str = Field(default="https://example.com", alias="OPENROUTER_SITE_URL")
     openrouter_app_name: str = Field(default="bot-service", alias="OPENROUTER_APP_NAME")
 
+    proxy_url: str = Field(default="", alias="PROXY_URL")
+
     class Config:
         env_file = ".env"
         extra = "ignore"

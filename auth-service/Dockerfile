@@ -2,11 +2,8 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN pip install uv
-
-COPY pyproject.toml .
-RUN uv pip compile pyproject.toml -o requirements.txt && \
-    uv pip install -r requirements.txt
+RUN pip install --no-cache-dir \
+    fastapi uvicorn sqlalchemy aiosqlite pydantic pydantic-settings python-jose[cryptography] passlib[bcrypt] python-multipart ruff greenlet bcrypt
 
 COPY . .
 

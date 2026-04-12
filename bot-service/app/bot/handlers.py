@@ -1,4 +1,3 @@
-import asyncio
 from aiogram import Router, types
 from aiogram.filters import Command
 from app.infra.redis import get_redis
@@ -51,8 +50,8 @@ async def handle_message(message: types.Message):
 
     await message.answer("Processing your request...")
 
-    task = llm_request.delay(message.text, int(user_id))
     try:
+        task = llm_request.delay(message.text, int(user_id))
         result = task.get(timeout=60)
         await message.answer(result)
     except Exception as e:
