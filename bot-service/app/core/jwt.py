@@ -1,0 +1,13 @@
+from jose import jwt, JWTError, ExpiredSignatureError
+from app.core.config import settings
+import time
+
+
+def decode_and_validate(token: str) -> dict:
+    try:
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_alg])
+        return payload
+    except ExpiredSignatureError:
+        raise ValueError("Token expired")
+    except JWTError:
+        raise ValueError("Invalid token")

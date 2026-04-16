@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # ========== AUTH SERVICE ==========
+  auth-db:
+    image: alpine:latest
+    container_name: auth-db
+    volumes:
+      - ./auth-service:/data
+    command: tail -f /dev/null
+    # SQLite используется напрямую через volume
+
+  auth-service:
+    build: ./auth-service
+    container_name: auth-service
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./auth-service:/app
+    environment:
+      - APP_NAME=auth-service
+      - ENV=docker
+      - JWT_SECRET=supersecretkeychangeit1234567890
+      - JWT_ALG=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=60
+      - SQLITE_PATH=/app/auth.db
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+  # ========== BOT SERVICE ==========
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    restart: unless-stopped
+
+  bot-service:
+    build: ./bot-service
+    container_name: bot-service
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./bot-service:/app
+    environment:
+      - APP_NAME=bot-service
+      - ENV=docker
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - JWT_SECRET=supersecretkeychangeit1234567890
+      - JWT_ALG=HS256
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672//
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+      - OPENROUTER_MODEL=openai/gpt-3.5-turbo
+      - OPENROUTER_SITE_URL=https://example.com
+      - OPENROUTER_APP_NAME=bot-service
+    depends_on:
+      - redis
+      - rabbitmq
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+
+  celery-worker:
+    build: ./bot-service
+    container_name: celery-worker
+    volumes:
+      - ./bot-service:/app
+    environment:
+      - APP_NAME=bot-service
+      - ENV=docker
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - JWT_SECRET=supersecretkeychangeit1234567890
+      - JWT_ALG=HS256
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672//
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+      - OPENROUTER_MODEL=openai/gpt-3.5-turbo
+      - OPENROUTER_SITE_URL=https://example.com
+      - OPENROUTER_APP_NAME=bot-service
+    depends_on:
+      - redis
+      - rabbitmq
+      - bot-service
+    command: celery -A app.infra.celery_app worker --loglevel=info
+    restart: unless-stopped
